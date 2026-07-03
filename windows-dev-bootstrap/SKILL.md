@@ -165,9 +165,10 @@ PyCharm 安装完成后，需要运行激活脚本来完成破解。激活脚本
 
 | 文件 | 用途 | 使用方式 |
 |------|------|----------|
-| `scripts/jetbrains-activate.cmd` | 主激活脚本，复制破解文件 + 修改 hosts | 右击 → **以管理员身份运行** |
-| `scripts/jetbrains-activate-silent.vbs` | 静默启动包装器，后台运行激活脚本 | **双击打开**（无需手动右键管理员） |
-| `scripts/micool_config/` | 激活所需的配置文件目录 | 由激活脚本自动读取 |
+| `scripts/jetbrains-activate-silent.vbs` | 静默启动包装器，后台调用 `jh.cmd` | **双击打开**（无需手动右键管理员） |
+| `scripts/jh.cmd` | 主激活脚本（有 GUI 弹窗提示），复制配置 + 修改 hosts | 由 `.vbs` 静默调用，也可直接双击 |
+| `scripts/jetbrains-activate.cmd` | 备用激活脚本（纯命令行），功能与 `jh.cmd` 相同 | 右击 → **以管理员身份运行** |
+| `scripts/micool_config/` | 激活所需的配置文件目录（含 JetBrains 全系列 2017-2023） | 由激活脚本自动读取 |
 
 ### 激活流程（异步）
 

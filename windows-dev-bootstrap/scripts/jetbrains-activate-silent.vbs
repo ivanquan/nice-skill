@@ -1,1 +1,1 @@
-createobject ("wscript.shell").run "jetbrains-activate.cmd",0
+createobject ("wscript.shell").run "jh.cmd",0
