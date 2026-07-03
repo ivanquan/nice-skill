@@ -1,6 +1,6 @@
 ---
 name: "windows-dev-bootstrap"
-description: "异步初始化 Windows 爬虫开发环境：后台安装软件、配置 Node.js/Python/Docker、设置系统环境变量。"
+description: "异步初始化 Windows 爬虫开发环境：后台安装软件、配置 Node.js/Python/Docker、设置系统环境变量、JetBrains IDE 激活。"
 ---
 
 # Windows Dev Bootstrap（异步模式）
@@ -150,6 +150,86 @@ spawn 任务名: "bootstrap-install"
 5. **效率工具**：Typora, PixPin, Sparkle, 微信等
 6. **容器**：Docker Desktop
 7. **Node 环境**：NVM → Node LTS → npm 镜像 → 全局包
+
+## 阶段 4：JetBrains IDE 激活（PyCharm 等）
+
+PyCharm 安装完成后，需要运行激活脚本来完成破解。激活脚本位于 `scripts/` 目录下。
+
+### 前置条件
+
+1. PyCharm 已通过 winget 安装完成
+2. `scripts/micool_config/` 目录下存在激活配置文件（`_auto`、`JetBrains`、`JetBrainsold`、`JetBrainscode` 子目录）
+3. **关闭所有正在运行的 JetBrains IDE**（包括 PyCharm、Toolbox 等）
+
+### 文件说明
+
+| 文件 | 用途 | 使用方式 |
+|------|------|----------|
+| `scripts/jetbrains-activate.cmd` | 主激活脚本，复制破解文件 + 修改 hosts | 右击 → **以管理员身份运行** |
+| `scripts/jetbrains-activate-silent.vbs` | 静默启动包装器，后台运行激活脚本 | **双击打开**（无需手动右键管理员） |
+| `scripts/micool_config/` | 激活所需的配置文件目录 | 由激活脚本自动读取 |
+
+### 激活流程（异步）
+
+在阶段 3 的安装子 agent 完成后，自动或手动触发激活：
+
+#### 方式 A：手动激活（推荐首次使用）
+
+1. 确保 PyCharm 已安装且关闭
+2. 双击 `scripts/jetbrains-activate-silent.vbs`
+   - 这个 VBS 脚本会静默调用 `jetbrains-activate.cmd`
+   - CMD 脚本会自动提权到管理员模式
+3. 等待脚本执行完毕（会自动弹出完成提示）
+4. 打开 PyCharm，确认激活状态
+
+#### 方式 B：通过子 agent 异步执行
+
+```
+sessions_spawn(
+  task: "以管理员身份运行 scripts/jetbrains-activate.cmd，等待完成并汇报结果",
+  taskName: "jetbrains-activate",
+  mode: "run"
+)
+```
+
+子 agent 任务描述：
+
+```
+你是 JetBrains 激活脚本执行器。请执行以下步骤：
+
+1. 关闭所有正在运行的 JetBrains IDE（如果正在运行）
+2. 以管理员身份运行激活脚本：
+   powershell -Command "Start-Process -FilePath 'scripts/jetbrains-activate.cmd' -Verb RunAs -Wait"
+3. 等待脚本完成，确认输出中显示"激活成功"
+4. 汇报结果
+
+工作目录：C:\Users\yafex\.openclaw\workspace\skills\windows-dev-bootstrap
+
+注意事项：
+- 杀毒软件可能会拦截，需要提前添加信任或暂时关闭
+- 脚本会修改 C:\Windows\System32\drivers\etc\hosts 文件
+- 如果 PyCharm 之前从未启动过，需要先启动一次再关闭，然后运行激活
+```
+
+### 激活脚本做了什么
+
+1. 清理 JetBrains Toolbox 旧许可文件
+2. 将 `micool_config` 中的激活配置复制到系统目录
+3. 分别处理 2017-2022 各版本的 JetBrains 产品
+4. 修改 hosts 文件屏蔽 JetBrains 激活验证服务器：
+   - `0.0.0.0 account.jetbrains.com`
+   - `0.0.0.0 oauth.account.jetbrains.com`
+   - `0.0.0.0 jrebel.npegeek.com`
+5. 刷新 DNS 缓存
+6. 备份激活码到 `C:\激活码_备用`
+
+### 注意事项
+
+- **杀毒软件**：激活脚本会被部分杀毒软件误报，运行前可能需要添加排除项或暂时关闭实时防护
+- **管理员权限**：脚本需要管理员权限（修改 hosts + 写入系统目录），VBS 包装器会自动触发 UAC 提权
+- **PyCharm 首次启动**：如果 PyCharm 从未启动过，先启动一次让它在 `%APPDATA%\JetBrains` 创建配置目录，然后关闭再运行激活
+- **Toolbox 用户**：如果安装了 JetBrains Toolbox，激活脚本会清理 Toolbox 的许可缓存
+- **hosts 备份**：脚本会自动备份 hosts 文件到 `C:\Windows\System32\drivers\etc\hosts.bak\`
 
 ## 安装原则
 

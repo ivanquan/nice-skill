@@ -13,7 +13,7 @@
 | 软件 | winget ID | 备注 |
 |------|-----------|------|
 | Cursor | `Anysphere.Cursor` | AI 编辑器 |
-| PyCharm CE | `JetBrains.PyCharm.Community` | Python IDE |
+| PyCharm CE | `JetBrains.PyCharm.Community` | Python IDE，安装后运行 `scripts/jetbrains-activate-silent.vbs` 激活 |
 | VS Code | `Microsoft.VisualStudioCode` | 轻量编辑器 |
 
 ## 数据库
