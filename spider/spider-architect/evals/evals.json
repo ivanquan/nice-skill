@@ -1,0 +1,77 @@
+{
+  "skill": "spider-architect",
+  "version": "1.4-incremental-checkpoint",
+  "evals": [
+    {
+      "id": "v14-first-turn-phase0-only",
+      "prompt": "帮我设计一个 TikTok+YouTube 多平台监控系统，MySQL+Mongo，要 Node 签名",
+      "should_trigger": true,
+      "expected_behaviors": [
+        "仅 Phase 0：摘要已接收信息 + 追问缺项",
+        "结尾只有 CHECKPOINT-0 并停步",
+        "同一条回复不包含反爬 L 级定级",
+        "同一条回复不包含目录结构或 MySQL DDL",
+        "同一条回复不包含「以下 Phase 先行设计」类预演",
+        "不写代码"
+      ],
+      "forbidden_behaviors": [
+        "一条回复内出现 CHECKPOINT-0 与 CHECKPOINT-3 或完整架构",
+        "未等确认就输出 Mermaid 架构图"
+      ]
+    },
+    {
+      "id": "v14-continue-phase1-after-confirm",
+      "prompt": "CHECKPOINT-0 已确认，继续 Phase 1",
+      "should_trigger": true,
+      "expected_behaviors": [
+        "仅 Phase 1 反爬分析",
+        "结尾 CHECKPOINT-1 停步",
+        "不包含 Phase 0.5 基础设施问卷全文",
+        "不包含目录结构"
+      ]
+    },
+    {
+      "id": "phase5-must-enter-phase6",
+      "prompt": "开始落地脚手架，生成 amazon 爬虫",
+      "should_trigger": true,
+      "expected_behaviors": [
+        "生成代码后写入 docs/post-scaffold-status.md",
+        "说明项目为待配置状态不可直接运行",
+        "询问是否开始配置引导",
+        "不只说 python main.py"
+      ]
+    },
+    {
+      "id": "phase6a-config-guide",
+      "prompt": "开始配置引导",
+      "should_trigger": true,
+      "expected_behaviors": [
+        "从 C1 或当前未完成项逐步引导",
+        "给出验证命令",
+        "更新 post-scaffold-status 勾选"
+      ]
+    },
+    {
+      "id": "trigger-phase0-questions-only",
+      "prompt": "帮我设计 Amazon 爬虫",
+      "should_trigger": true,
+      "expected_behaviors": [
+        "Phase 0 提问",
+        "CHECKPOINT-0 停步",
+        "不写代码"
+      ]
+    },
+    {
+      "id": "v14-user-revises-checkpoint0",
+      "prompt": "规模改成每天百万级，TaskSpider 不对，要 BatchSpider",
+      "context": "用户在 CHECKPOINT-0 修改 Q1 和 feapder_mode",
+      "should_trigger": true,
+      "expected_behaviors": [
+        "更新 Phase 0 摘要与 feapder_mode",
+        "重新给出 CHECKPOINT-0",
+        "不引用旧架构方案",
+        "不自动跳到 Phase 3"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+# Dependencies & caches
+node_modules/
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+
+# Nested git repos (if accidentally copied)
+**/.git/
