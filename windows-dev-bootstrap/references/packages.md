@@ -48,6 +48,7 @@
 | Baidu Netdisk | `Baidu.BaiduNetdisk` | 百度网盘 |
 | uTools | `Yuanli.uTools` | 效率启动器 |
 | Proxifier | `VentoByte.Proxifier` | SOCKS5 代理/强制代理 |
+| Clash Verge | `ClashVergeRev.ClashVergeRev` | 代理客户端（Clash Meta GUI） |
 | SpaceSniffer | `UderzoSoftware.SpaceSniffer` | 磁盘空间分析 |
 
 ## 版本控制与容器
