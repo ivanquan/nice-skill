@@ -47,6 +47,8 @@
 | Sunlogin | `XPDDRBQ2D1N7NJ` (msstore) | 向日葵远程 |
 | Baidu Netdisk | `Baidu.BaiduNetdisk` | 百度网盘 |
 | uTools | `Yuanli.uTools` | 效率启动器 |
+| Proxifier | `VentoByte.Proxifier` | SOCKS5 代理/强制代理 |
+| SpaceSniffer | `UderzoSoftware.SpaceSniffer` | 磁盘空间分析 |
 
 ## 版本控制与容器
 

@@ -96,6 +96,8 @@ Install-Package -Name "Baidu Netdisk" -Id "Baidu.BaiduNetdisk"
 Install-Package -Name "uTools" -Id "Yuanli.uTools"
 Install-Package -Name "WeChat" -Id "Tencent.WeChat"
 Install-Package -Name "Sunlogin" -Id "XPDDRBQ2D1N7NJ"
+Install-Package -Name "Proxifier" -Id "VentoByte.Proxifier"
+Install-Package -Name "SpaceSniffer" -Id "UderzoSoftware.SpaceSniffer"
 
 # === Phase 6: Container ===
 Write-Host ""
