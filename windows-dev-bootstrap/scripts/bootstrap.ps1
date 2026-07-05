@@ -111,9 +111,48 @@ Write-Host "[7/7] Node.js Environment" -ForegroundColor Magenta
 # NVM for Windows
 Install-Package -Name "NVM for Windows" -Id "CoreyButler.NVMforWindows"
 
-# Refresh env vars
+# Refresh env vars (machine + user)
 Write-Host "  ... Refreshing env vars..." -ForegroundColor Yellow
 $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+
+# Explicitly load NVM paths into current session (winget install just wrote registry, not current process)
+$nvmHome = [System.Environment]::GetEnvironmentVariable("NVM_HOME", "Machine")
+$nvmSymlink = [System.Environment]::GetEnvironmentVariable("NVM_SYMLINK", "Machine")
+if ($nvmHome -and $nvmSymlink) {
+    $env:Path = "$nvmHome;$nvmSymlink;$env:Path"
+    Write-Host "  OK NVM paths loaded: NVM_HOME=$nvmHome" -ForegroundColor Green
+} else {
+    Write-Host "  WARN NVM_HOME/NVM_SYMLINK not found in registry" -ForegroundColor Yellow
+}
+
+# Verify Python is in PATH (Python.Python.3.12 winget install should auto-add)
+$pyCmd = Get-Command python -ErrorAction SilentlyContinue
+if ($pyCmd) {
+    Write-Host "  OK Python: $($pyCmd.Source)" -ForegroundColor Green
+} else {
+    Write-Host "  WARN python not in current PATH, trying explicit Python install path..." -ForegroundColor Yellow
+    $pyPaths = @(
+        "$env:LOCALAPPDATA\Programs\Python\Python312",
+        "$env:ProgramFiles\Python312",
+        "$env:LOCALAPPDATA\Programs\Python\Python312\Scripts",
+        "$env:ProgramFiles\Python312\Scripts"
+    )
+    foreach ($p in $pyPaths) {
+        if (Test-Path "$p\python.exe") {
+            $env:Path = "$p;$env:Path"
+            Write-Host "  OK Added Python to PATH: $p" -ForegroundColor Green
+            break
+        }
+    }
+}
+
+# Verify Git is in PATH
+$gitCmd = Get-Command git -ErrorAction SilentlyContinue
+if ($gitCmd) {
+    Write-Host "  OK Git: $($gitCmd.Source)" -ForegroundColor Green
+} else {
+    Write-Host "  WARN git not in current PATH" -ForegroundColor Yellow
+}
 
 # Install Node LTS via NVM
 Write-Host "  ... Installing Node.js LTS via NVM..." -ForegroundColor Yellow
