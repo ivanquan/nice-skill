@@ -26,6 +26,7 @@ nice-skill/
 | [browser-hook-snippets](js-reverse/browser-hook-snippets/) | DevTools 观察型 hook 脚本（xhr/fetch/cookie 等） |
 | [rs-reverse](js-reverse/rs-reverse/) | 瑞数轻量项目骨架与材料缓存 |
 | [captcha-slide-reverse](js-reverse/captcha-slide-reverse/) | 滑块验证码协议还原（极验/腾讯/易盾等） |
+| [captcha-solver-router](js-reverse/captcha-solver-router/) | 验证码应对路由器：识别类型 → 选路线(R1/R2/R3) → 打码平台 + 浏览器自动化 |
 | [dy-ab-pure](js-reverse/dy-ab-pure/) | 抖音 Web `a_bogus` 纯 Python 纯算 |
 
 **推荐工作流：**
@@ -39,8 +40,13 @@ nice-skill/
     ↓
 补环境   → env-patch / rs-reverse
     ↓
-专项     → captcha-slide-reverse / dy-ab-pure
+专项     → captcha-slide-reverse / captcha-solver-router / dy-ab-pure
 ```
+
+**验证码两条路线：**
+
+- **协议过（R3）** → `captcha-slide-reverse`：本地还原请求链，零第三方成本
+- **打码+自动化（R2）** → `captcha-solver-router`：识别类型、选平台、调 BingTop/YesCaptcha 等 + Playwright 拟人操作
 
 ### 爬虫 (`spider/`)
 
@@ -70,6 +76,9 @@ nice-skill/
 ```powershell
 # 示例：安装 web-protocol-recovery
 Copy-Item -Recurse "js-reverse\web-protocol-recovery" "$env:USERPROFILE\.cursor\skills\web-protocol-recovery"
+
+# 示例：安装 captcha-solver-router（验证码路由器）
+Copy-Item -Recurse "js-reverse\captcha-solver-router" "$env:USERPROFILE\.cursor\skills\captcha-solver-router"
 
 # 批量安装全部 js-reverse skills
 Get-ChildItem "js-reverse" -Directory | ForEach-Object {

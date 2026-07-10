@@ -1,0 +1,22 @@
+{
+  "yescaptcha": {
+    "client_key": "YOUR_YESCAPTCHA_CLIENTKEY",
+    "node": "https://api.yescaptcha.com"
+  },
+  "bingtop": {
+    "username": "YOUR_BINGTOP_USER",
+    "password": "YOUR_BINGTOP_PASS"
+  },
+  "jfbym": {
+    "token": "YOUR_JFBYM_TOKEN"
+  },
+
+  "automation": {
+    "chrome_executable": "",
+    "chrome_debug_port": 9222
+  },
+
+  "external_adapters": [
+    "C:/abs/path/to/your/myplatform.py"
+  ]
+}

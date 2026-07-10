@@ -1,0 +1,193 @@
+{
+  "skill": "captcha-solver-router",
+  "description": "触发判定 + 路由判定的本地评测集。用 scripts/identify.py 跑 routing_evals，用人工/基线比对 trigger_evals。",
+  "trigger_evals": [
+    {"prompt": "这个 reCAPTCHA v2 怎么过？", "should_trigger": true},
+    {"prompt": "极验 GT4 滑块的 w 参数怎么生成", "should_trigger": true},
+    {"prompt": "帮我把这个旋转验证码的角度算出来", "should_trigger": true},
+    {"prompt": "对比一下 YesCaptcha 和 JFBYM 哪个便宜", "should_trigger": true},
+    {"prompt": "调用打码平台 API 识别这张图文验证码", "should_trigger": true},
+    {"prompt": "这个网站的 sign 参数在哪里生成的", "should_trigger": false, "reason": "泛化定位 sign 入口，不在此 skill 范围"},
+    {"prompt": "帮我写个 DevTools 的 hook 脚本", "should_trigger": false, "reason": "纯 hook 脚本，转 browser-hook-snippets"},
+    {"prompt": "Akamai 的 cookie 挑战怎么绕", "should_trigger": false, "reason": "非验证码 WAF/cookie 挑战"}
+  ],
+  "routing_evals": [
+    {
+      "input": "g-recaptcha data-sitekey=6Le-wvkS api2/userverify",
+      "expect": {"category": "token", "platform": "recaptcha_v2", "recommended_platform": "yescaptcha", "routes": ["R1"]}
+    },
+    {
+      "input": "captcha_id=abc lot_number=xyz pow_detail=/gcaptcha4.geetest.com/load",
+      "expect": {"category": "slide", "platform": "gt4", "recommended_platform": "bingtop", "routes": ["R2", "R3"]}
+    },
+    {
+      "input": "window.TDC.getData(true) cap_union_prehandle TCaptcha",
+      "expect": {"category": "slide", "platform": "tencent", "recommended_platform": "bingtop", "routes": ["R2", "R3"]}
+    },
+    {
+      "input": "请依次点选 传、敬、圣 九宫格",
+      "expect": {"category": "click", "platform": "click", "recommended_platform": "bingtop", "routes": ["R2"]}
+    },
+    {
+      "input": "captcha.php validateCode 4位英文数字",
+      "expect": {"category": "image", "platform": "image", "recommended_platform": "bingtop", "routes": ["R1-like"]}
+    },
+    {
+      "input": "dun.163.com/trial/jigsaw yidun--jigsaw api/v3/get bg front",
+      "expect": {"category": "slide", "platform": "yidun", "recommended_platform": "bingtop", "routes": ["R2", "R3"], "r2_op": "yidun-slide", "captcha_type": 1310}
+    },
+    {
+      "input": "passport.jd.com #captcha_modal 请拖动滑块使图片为正 captcha_modal_pc",
+      "expect": {"category": "rotate", "platform": "jcap", "recommended_platform": "bingtop", "routes": ["R2"], "r2_op": "jd-login-captcha", "captcha_type": 11201}
+    },
+    {
+      "input": "passport.jd.com 请按照图中轨迹绘制 captcha_drop",
+      "expect": {"category": "track", "platform": "jcap", "recommended_platform": "bingtop", "routes": ["R2"], "r2_op": "jd-login-captcha", "captcha_type": 3002}
+    },
+    {
+      "input": "某陌生验证码，只看到一张图没有任何 js 信号",
+      "expect": {"category": null, "confidence": "low", "note_contains": "no signal matched"}
+    }
+  ],
+  "driver_evals": [
+    {
+      "input": {"scenario": "强反爬站点（Cloudflare/DataDome/Akamai 拦截），reCAPTCHA v3 企业版", "op": "token/slide"},
+      "expect": {"recommended_backend": "cloak", "reason_contains": "源码级隐形 Chromium"}
+    },
+    {
+      "input": {"scenario": "轻量单页极验 GT4 滑块，低频内部业务", "op": "slide"},
+      "expect": {"recommended_backend": "drissionpage", "reason_contains": "轻量"}
+    },
+    {
+      "input": {"scenario": "需要 Firefox 指纹绕过 Chromium 专属检测", "op": "slide"},
+      "expect": {"recommended_backend": "camoufox", "reason_contains": "Firefox"}
+    },
+    {
+      "input": {"scenario": "目标不强、需 Playwright 生态且已有 stealth 封装", "op": "click"},
+      "expect": {"recommended_backend": "playwright", "reason_contains": "stealth"}
+    },
+    {
+      "input": {"tech_stack": "全部 Python，自动化框架用 Playwright / DrissionPage(DP) / CloakBrowser"},
+      "expect": {"language": "python", "backends": ["cloak", "drissionpage", "playwright"], "note_contains": "全 Python"}
+    }
+  ],
+  "external_evals": [
+    {
+      "prompt": "帮我接一下 NewCap 打码平台，文档在 https://newcap.com/docs",
+      "should_trigger_learn": true,
+      "expect_workflow": ["调研文档", "整理 spec JSON", "learn_platform.py 生成骨架", "补解析", "config 加密钥", "冒烟测试"]
+    },
+    {
+      "prompt": "我自己写了个 myplatform.py 适配器，丢进 adapters 目录了，怎么用",
+      "expect": {"auto_discovered": true, "usage": "python scripts/solve.py --platform myplatform --op ..."}
+    },
+    {
+      "prompt": "除了这三家，能接任意打码平台吗",
+      "expect": {"extensible": true, "mechanism": "BaseSolver 适配器 + 注册表自动发现 + external_adapters 路径"}
+    },
+    {
+      "prompt": "对比一下 YesCaptcha 和 JFBYM 哪个便宜",
+      "should_trigger": true
+    }
+  ],
+  "preflight_evals": [
+    {
+      "name": "missing_config_json",
+      "setup": "删除 scripts/config.json",
+      "command": "python preflight.py --route R1 --json",
+      "expect": {"success": false, "checks_contains": "config_json", "guide_contains": "setup.py"}
+    },
+    {
+      "name": "placeholder_key_rejected",
+      "setup": "config.json 中 yescaptcha.client_key=YOUR_YESCAPTCHA_CLIENTKEY",
+      "command": "python preflight.py --platform yescaptcha --json",
+      "expect": {"platform_yescaptcha_ok": false}
+    },
+    {
+      "name": "solve_blocks_without_key",
+      "command": "python solve.py --platform yescaptcha --op token --sitekey x --url https://example.com",
+      "expect": {"exit_code": 1, "stderr_contains": "setup.py"}
+    },
+    {
+      "name": "agent_should_guide_not_ask_key_in_chat",
+      "prompt": "帮我过 reCAPTCHA，我没有配置密钥",
+      "expect": {"must_not": "索要明文 clientKey", "must_guide": ["setup.py", "preflight.py"]}
+    }
+  ],
+  "live_evals": [
+    {
+      "name": "yescaptcha_recaptcha_v2_demo",
+      "platform": "yescaptcha",
+      "op": "token",
+      "args": ["--task-type", "NoCaptchaTaskProxyless", "--sitekey", "6Le-wvkSAAAAAPBMRTvw0Q4Muexq9bi0DJwx_mJ-", "--url", "https://www.google.com/recaptcha/api2/demo"],
+      "pass_criterion": "返回包含 gRecaptchaResponse 且长度>50 的字符串"
+    },
+    {
+      "name": "jfbym_slide_pair",
+      "platform": "jfbym",
+      "op": "slide",
+      "args": ["--captcha-type", "20111", "--slice", "<slice.png>", "--bg", "<bg.png>"],
+      "pass_criterion": "返回可解析为数字的像素距离"
+    },
+    {
+      "name": "bingtop_image",
+      "platform": "bingtop",
+      "op": "image",
+      "args": ["--captcha-type", "10011", "--image", "<cap.png>"],
+      "pass_criterion": "返回识别答案字符串，code=0"
+    },
+    {
+      "name": "yidun_jigsaw_slide_r2",
+      "platform": "bingtop",
+      "op": "yidun-slide",
+      "backend": "playwright",
+      "args": [
+        "--target-url", "https://dun.163.com/trial/jigsaw",
+        "--platform", "bingtop",
+        "--yidun-widget-selector", ".yidun--jigsaw, .yidun",
+        "--wait-until", "networkidle",
+        "--click-max-rounds", "3"
+      ],
+      "pass_criterion": "stdout JSON ok=true 且 yidun_success=true",
+      "doc": "references/yidun-r2-automation.md"
+    }
+  ],
+  "mcp_evals": [
+    {
+      "prompt": "极验 GT3 滑块（register-slide/gettype.php/fullpage.9.x/ajax.php），R3 怎么过",
+      "expect": {
+        "routes": ["R3"],
+        "use_mcp": true,
+        "mcp_phase": "Phase A 侦察（analyze_target / list_scripts / hook fetch / get_paused）",
+        "workflow_ref": "references/mcp-integration.md 的 GT3 runbook",
+        "delivery": "浏览器无关 Python（requests）+ 本地 Node 小帮手 + ddddocr"
+      }
+    },
+    {
+      "prompt": "用 JSReverser-MCP 还原这个腾讯滑块 TDC.getData(true) 的 collect",
+      "expect": {
+        "engine": "JSReverser-MCP（DevTools 逆向）",
+        "knowledge": "js-reverse/captcha-slide-reverse 的腾讯滑块分支",
+        "boundary": "MCP 只侦察/采样，最终交付必须浏览器无关"
+      }
+    },
+    {
+      "assert": "R3 三阶段顺序",
+      "expect": ["Phase A 侦察（MCP）", "Phase B 还原（对照 captcha-slide-reverse 厂商工作流 + 本地 VM/Node）", "Phase C 交付（浏览器无关 Python/Node）"]
+    },
+    {
+      "assert": "GT3 runbook 关键同轮铁律",
+      "expect": ["initial/pre/final 的 aeskey 同一轮", "c/s/challenge/距离/轨迹同轮", "最终以服务端响应 success:1 为准"]
+    },
+    {
+      "assert": "JSReverser-MCP 重复工具名已修复",
+      "expect": {
+        "list_hooks": "canonical（jshook hook 管理器，列出 created hooks + statuses）",
+        "list_function_hooks": "debugger 函数 hook 列表（原冲突名，已重命名）",
+        "js_navigate_page": "jshook 版导航（原与 pages.ts 冲突，已加 js_ 前缀）",
+        "js_take_screenshot": "jshook 版截图（原与 screenshot.ts 冲突，已加 js_ 前缀）",
+        "server_starts": "node build/src/index.js 可正常启动并注册 68 个工具"
+      }
+    }
+  ]
+}

@@ -1,3 +1,7 @@
+# Secrets (never commit)
+config.json
+**/config.json
+
 # Dependencies & caches
 node_modules/
 __pycache__/
