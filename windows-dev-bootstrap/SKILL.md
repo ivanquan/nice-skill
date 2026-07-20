@@ -111,8 +111,8 @@ foreach ($t in $tools) {
 
 ## Install order (inside bootstrap.ps1)
 
-1. Core: Git, Python (latest + optional 3.9-3.11 official), pip mirror
-2. IDEs: VS Code, Cursor, PyCharm (Community / Professional official)
+1. Core: Git, Python 3.9 / 3.10 / 3.11 (official installers, version-locked; 3.11 -> User PATH), pip mirror
+2. IDEs: VS Code, Cursor, PyCharm Professional 2022.3.3 (official installer, needs legit license)
 3. Databases: MySQL, MongoDB, Redis, Navicat (official trial)
 4. Debug: Apifox, Charles (official)
 5. Utils: Typora, PixPin, Sparkle, WeChat, Baidu Netdisk, uTools, CC Switch, Proxifier, Clash Verge, SpaceSniffer

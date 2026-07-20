@@ -9,8 +9,17 @@
 | 软件 | winget id | scoop | 官方直下 | 备注 |
 |---|---|---|---|---|
 | Git | `Git.Git` | `git` | — | — |
-| Python 3.12 | `Python.Python.3.12` | `python`（仅最新版） | python.org | 需 3.9–3.11 请用官方安装包静默装（`/quiet TargetDir= PrependPath=0`） |
+| Python 3.12（最新，可选） | `Python.Python.3.12` | `python`（仅最新版） | python.org | 本环境**默认锁定 3.9/3.10/3.11**，见下方「版本锁定」 |
 | pip 镜像 | — | — | — | 自动设清华源 `pypi.tuna.tsinghua.edu.cn` |
+
+## 版本锁定（本环境指定，优先于"最新版"）
+
+| 软件 | 版本 | 安装方式 | 官方直下 | 备注 |
+|---|---|---|---|---|
+| Python | 3.9.13 | 官方安装包静默装 | https://www.python.org/ftp/python/3.9.13/python-3.9.13-amd64.exe | `/quiet TargetDir=D:\worksoft\Python39 PrependPath=0`（不进 PATH） |
+| Python | 3.10.11 | 官方安装包静默装 | https://www.python.org/ftp/python/3.10.11/python-3.10.11-amd64.exe | `/quiet TargetDir=D:\worksoft\Python310 PrependPath=0`（不进 PATH） |
+| Python | 3.11.9 | 官方安装包静默装 | https://www.python.org/ftp/python/3.11.9/python-3.11.9-amd64.exe | `/quiet TargetDir=D:\worksoft\Python311 PrependPath=0`；**默认加入 User PATH** |
+| PyCharm | 专业版 2022.3.3 | 官方安装包 | https://download.jetbrains.com/python/pycharm-professional-2022.3.3.exe | 静默 `/S`；**需正版许可**，本 skill 不提供任何破解 |
 
 ## IDE
 
@@ -18,8 +27,8 @@
 |---|---|---|---|---|
 | VS Code | `Microsoft.VisualStudioCode` | `vscode` | — | — |
 | Cursor | `Anysphere.Cursor` | `cursor` | https://download.cursor.com/latest/win | — |
-| PyCharm 社区版 | `JetBrains.PyCharm.Community` | `pycharm` | — | 免费 |
-| PyCharm 专业版 | — | — | jetbrains.com/pycharm/download | **需正版许可**，本 skill 不提供任何破解 |
+| PyCharm 社区版（可选） | `JetBrains.PyCharm.Community` | `pycharm` | — | 免费；本环境默认用下方锁定的专业版 2022.3.3 |
+| PyCharm 专业版 2022.3.3 | — | — | https://download.jetbrains.com/python/pycharm-professional-2022.3.3.exe | **需正版许可**，本 skill 不提供任何破解；静默 `/S` 安装 |
 
 ## 数据库
 
@@ -75,7 +84,7 @@
 
 1. Docker Desktop：重启并启用 WSL2/Hyper-V（需管理员）
 2. Charles：Help → SSL Proxying 安装证书
-3. Navicat / PyCharm 专业版：用正版许可激活
+3. PyCharm 专业版 2022.3.3：用正版许可激活（本 skill 不提供任何破解）
 4. Sparkle / Proxifier / CC Switch：配置订阅
 5. pip 依赖：`pip install scrapy requests httpx aiohttp selenium playwright beautifulsoup4 lxml pandas`
 6. Playwright 浏览器：`playwright install chromium`

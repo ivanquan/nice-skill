@@ -68,10 +68,10 @@ if ($winget -and $isAdmin) {
 # Package detection list: Name, WingetId, ScoopName
 $packages = @(
     @{Name="Git";                      WingetId="Git.Git";                           Scoop="git"},
-    @{Name="Python (latest)";          WingetId="Python.Python.3.12";               Scoop="python"},
+    # Python pinned to 3.9/3.10/3.11 (direct install) -> path-check below
     @{Name="VS Code";                  WingetId="Microsoft.VisualStudioCode";        Scoop="vscode"},
     @{Name="Cursor";                   WingetId="Anysphere.Cursor";                  Scoop="cursor"},
-    @{Name="PyCharm";                  WingetId="JetBrains.PyCharm.Community";       Scoop="pycharm"},
+    # PyCharm Pro 2022.3.3 (direct install) -> path-check below
     @{Name="MySQL";                    WingetId="Oracle.MySQL";                      Scoop=""},
     @{Name="MongoDB";                  WingetId="MongoDB.Server";                    Scoop="mongodb"},
     @{Name="MongoDB Compass";          WingetId="MongoDB.Compass";                   Scoop="mongodb-compass"},
@@ -117,6 +117,18 @@ foreach ($pkg in $packages) {
         Write-Host "  MISS $($pkg.Name)" -ForegroundColor Red
         $missing += $pkg.Name
     }
+}
+
+# Pinned direct-install versions (verify by install path)
+$pinnedPaths = @(
+    @{Name="Python 3.9.13";        Path=Join-Path $InstallRoot "Python39\python.exe"},
+    @{Name="Python 3.10.11";       Path=Join-Path $InstallRoot "Python310\python.exe"},
+    @{Name="Python 3.11.9";        Path=Join-Path $InstallRoot "Python311\python.exe"},
+    @{Name="PyCharm Pro 2022.3.3"; Path=Join-Path $InstallRoot "PyCharm\pycharm-professional-2022.3.3.exe"}
+)
+foreach ($p in $pinnedPaths) {
+    if (Test-Path $p.Path) { Write-Host "  OK   $($p.Name) (direct)" -ForegroundColor Green; $installed += $p.Name }
+    else { Write-Host "  MISS $($p.Name) (direct)" -ForegroundColor Red; $missing += $p.Name }
 }
 
 # NVM / Node

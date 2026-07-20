@@ -93,14 +93,43 @@ function Install-Scoop($name, $pkg) {
     Write-Host "  FAIL $name" -ForegroundColor Red; $script:failed += $name; $script:failedCount++; return $false
 }
 
+# pinned Python (official installer, version-locked) - Scoop only ships latest
+function Install-PythonPinned($a) {
+    $tmp = Join-Path $env:TEMP ([IO.Path]::GetFileName($a.U))
+    Write-Host "  ... downloading $($a.Name) ..." -ForegroundColor Yellow
+    try { Invoke-WebRequest -Uri $a.U -OutFile $tmp -UseBasicParsing -ErrorAction Stop }
+    catch { Write-Host "  FAIL download $($a.Name): $_" -ForegroundColor Red; $script:failed += $a.Name; $script:failedCount++; return }
+    $target = Join-Path $InstallRoot $a.Target
+    $args = "/quiet InstallAllUsers=0 TargetDir=`"$target`" Include_pip=1 PrependPath=0 Include_launcher=0 Include_test=0"
+    Write-Host "  ... installing $($a.Name) -> $target" -ForegroundColor Yellow
+    Start-Process -FilePath $tmp -ArgumentList $args -Wait -ErrorAction SilentlyContinue
+    if ($a.AddPath) { Add-UserPath $target; Add-UserPath (Join-Path $target "Scripts") }
+    Write-Host "  OK $($a.Name)" -ForegroundColor Green
+    $script:installed += $a.Name; $script:installedCount++
+}
+
+# PyCharm Professional (version-locked, official installer; needs legit license)
+function Install-PyCharmPro($a) {
+    $tmp = Join-Path $env:TEMP ([IO.Path]::GetFileName($a.U))
+    Write-Host "  ... downloading $($a.Name) ..." -ForegroundColor Yellow
+    try { Invoke-WebRequest -Uri $a.U -OutFile $tmp -UseBasicParsing -ErrorAction Stop }
+    catch { Write-Host "  FAIL download $($a.Name): $_" -ForegroundColor Red; $script:failed += $a.Name; $script:failedCount++; return }
+    Write-Host "  ... running installer (silent). Activate with your own JetBrains license later." -ForegroundColor Yellow
+    Start-Process -FilePath $tmp -ArgumentList "/S" -Wait -ErrorAction SilentlyContinue
+    Write-Host "  OK $($a.Name) (needs legit license)" -ForegroundColor Green
+    $script:installed += $a.Name; $script:installedCount++
+}
+
 # package table: Name, WingetId, Scoop, DirectUrl, Special
 $apps = @(
     @{Name="Git";                    W="Git.Git";                           S="git";                          U="";        Special=""},
-    @{Name="Python (latest)";        W="Python.Python.3.12";               S="python";                      U="";        Special=""},
+    @{Name="Python 3.9.13";          W="";                                  S="";                            U="https://www.python.org/ftp/python/3.9.13/python-3.9.13-amd64.exe";  Special="PythonPinned"; Target="Python39";  AddPath=$false},
+    @{Name="Python 3.10.11";         W="";                                  S="";                            U="https://www.python.org/ftp/python/3.10.11/python-3.10.11-amd64.exe"; Special="PythonPinned"; Target="Python310"; AddPath=$false},
+    @{Name="Python 3.11.9";          W="";                                  S="";                            U="https://www.python.org/ftp/python/3.11.9/python-3.11.9-amd64.exe";  Special="PythonPinned"; Target="Python311"; AddPath=$true},
     @{Name="VS Code";                W="Microsoft.VisualStudioCode";        S="vscode";                      U="";        Special=""},
     @{Name="Cursor";                 W="Anysphere.Cursor";                  S="cursor";                      U="https://download.cursor.com/latest/win";
                                                                                                                                 Special=""},
-    @{Name="PyCharm Community";      W="JetBrains.PyCharm.Community";       S="pycharm";                     U="";        Special=""},
+    @{Name="PyCharm Pro 2022.3.3";   W="";                                  S="";                            U="https://download.jetbrains.com/python/pycharm-professional-2022.3.3.exe"; Special="PyCharmPro"},
     @{Name="MongoDB";                W="MongoDB.Server";                    S="mongodb";                     U="";        Special=""},
     @{Name="MongoDB Compass";        W="MongoDB.Compass";                   S="mongodb-compass";             U="";        Special=""},
     @{Name="Redis";                  W="Redis.Redis";                       S="redis";                       U="";        Special="Redis"},
@@ -128,6 +157,8 @@ foreach ($a in $apps) {
         if ($pm -eq "winget") { Install-Winget $a.Name $a.W } else { Install-Scoop $a.Name $a.S }
         continue
     }
+    if ($a.Special -eq "PythonPinned") { Install-PythonPinned $a; continue }
+    if ($a.Special -eq "PyCharmPro")   { Install-PyCharmPro $a;   continue }
     Write-Host "  ... $($a.Name)" -ForegroundColor Yellow
     if ($pm -eq "winget") {
         if (-not (Install-Winget $a.Name $a.W)) {
