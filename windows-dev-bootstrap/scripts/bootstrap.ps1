@@ -1,217 +1,193 @@
-# Windows Dev Environment Bootstrap Script
-# Usage: .\bootstrap.ps1 [-SkipCheck]
+# Windows Dev Environment Bootstrap (adaptive: winget / Scoop)
+# Usage: powershell -ExecutionPolicy Bypass -File bootstrap.ps1 [-SkipCheck] [-Pm auto|winget|scoop]
+# ASCII only. No cracks/activation. Installs under D:\worksoft.
+# NOTE: JetBrains crack/activation components have been REMOVED. Legitimate install only.
 
 param(
     [switch]$SkipCheck,
-    [string]$Categories = ""
+    [ValidateSet("auto","winget","scoop")]
+    [string]$Pm = "auto"
 )
 
 $ErrorActionPreference = "Continue"
 $startTime = Get-Date
-$installed = @()
-$failed = @()
-$installedCount = 0
-$failedCount = 0
+$InstallRoot = "D:\worksoft"
+$installed = @(); $failed = @()
+$installedCount = 0; $failedCount = 0
 
-function Install-Package {
-    param(
-        [string]$Name,
-        [string]$Id,
-        [string]$ExtraArgs = ""
-    )
+# ---------- helpers ----------
+function Test-Admin {
+    $id = [System.Security.Principal.WindowsIdentity]::GetCurrent()
+    $p = New-Object System.Security.Principal.WindowsPrincipal($id)
+    return $p.IsInRole([System.Security.Principal.WindowsBuiltInRole]::Administrator)
+}
+function Add-UserPath($dir) {
+    $cur = [Environment]::GetEnvironmentVariable("Path","User")
+    $parts = if ($cur) { $cur -split ";" | Where-Object { $_.Trim() -ne "" } } else { @() }
+    if ($parts -notcontains $dir) {
+        $parts += $dir
+        [Environment]::SetEnvironmentVariable("Path", ($parts -join ";"), "User")
+        Write-Host "    OK added to User PATH: $dir" -ForegroundColor Green
+    } else { Write-Host "    skip (already in PATH): $dir" -ForegroundColor Gray }
+}
+function Invoke-Direct($name, $url) {
+    if (-not $url) { Write-Host "  MANUAL $name (no direct URL, install manually)" -ForegroundColor Yellow; return $false }
+    $tmp = Join-Path $env:TEMP ([IO.Path]::GetFileName($url))
+    Write-Host "  ... downloading $name ..." -ForegroundColor Yellow
+    try { Invoke-WebRequest -Uri $url -OutFile $tmp -UseBasicParsing -ErrorAction Stop }
+    catch { Write-Host "  FAIL download $name : $_" -ForegroundColor Red; return $false }
+    Write-Host "  ... running installer for $name ..." -ForegroundColor Yellow
+    Start-Process -FilePath $tmp -ArgumentList "/S" -Wait -ErrorAction SilentlyContinue
+    return $true
+}
 
-    Write-Host "  ... Installing $Name ..." -NoNewline -ForegroundColor Yellow
+# ---------- install root ----------
+if (-not (Test-Path $InstallRoot)) { New-Item -ItemType Directory -Path $InstallRoot -Force | Out-Null }
 
-    # Check if already installed
-    winget list --id $Id --accept-source-agreements --exact 2>$null | Out-Null
-    if ($LASTEXITCODE -eq 0) {
-        Write-Host "`r  OK $Name (already installed)" -ForegroundColor Green
-        $script:installed += $Name
-        $script:installedCount++
-        return $true
-    }
+# ---------- select package manager ----------
+$isAdmin = Test-Admin
+$hasWinget = Get-Command winget -ErrorAction SilentlyContinue
+$scoopShim = Join-Path $InstallRoot "scoop\shims\scoop.ps1"
+$hasScoop = (Get-Command scoop -ErrorAction SilentlyContinue) -or (Test-Path $scoopShim)
 
-    $result = winget install --id $Id --accept-source-agreements --accept-package-agreements -h $ExtraArgs 2>&1
-    if ($LASTEXITCODE -eq 0) {
-        Write-Host "`r  OK $Name" -ForegroundColor Green
-        $script:installed += $Name
-        $script:installedCount++
-        return $true
-    } else {
-        Write-Host "`r  FAIL $Name" -ForegroundColor Red
-        $script:failed += $Name
-        $script:failedCount++
-        return $false
-    }
+if ($Pm -eq "scoop") { $pm = "scoop" }
+elseif ($Pm -eq "winget") { $pm = if ($hasWinget) { "winget" } else { "scoop" } }
+else {
+    if ($hasWinget -and $isAdmin) { $pm = "winget" }
+    elseif ($hasWinget -and -not $isAdmin) { $pm = "winget" }   # apps ok; service tools handled separately
+    elseif ($hasScoop) { $pm = "scoop" }
+    else { $pm = "scoop" }
 }
 
 Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "  Windows Dev Environment Bootstrap" -ForegroundColor Cyan
+Write-Host "  Windows Dev Bootstrap  (PM=$pm, admin=$isAdmin)" -ForegroundColor Cyan
 Write-Host "  Start: $(Get-Date -Format 'HH:mm:ss')" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
-Write-Host ""
 
-# === Phase 1: Core Tools ===
-Write-Host "[1/7] Core Tools" -ForegroundColor Magenta
-Install-Package -Name "Git" -Id "Git.Git"
-Install-Package -Name "Python 3.12" -Id "Python.Python.3.12"
-
-# Configure pip mirror
-Write-Host "  ... Configuring pip mirror (Tsinghua)..." -NoNewline -ForegroundColor Yellow
-pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple 2>$null
-Write-Host "`r  OK pip mirror configured" -ForegroundColor Green
-
-# === Phase 2: IDEs ===
-Write-Host ""
-Write-Host "[2/7] IDEs" -ForegroundColor Magenta
-Install-Package -Name "VS Code" -Id "Microsoft.VisualStudioCode"
-Install-Package -Name "Cursor" -Id "Anysphere.Cursor"
-Install-Package -Name "PyCharm CE" -Id "JetBrains.PyCharm.Community"
-
-# === Phase 3: Databases ===
-Write-Host ""
-Write-Host "[3/7] Databases" -ForegroundColor Magenta
-Install-Package -Name "MySQL" -Id "Oracle.MySQL"
-Install-Package -Name "MongoDB" -Id "MongoDB.Server"
-Install-Package -Name "MongoDB Compass" -Id "MongoDB.Compass"
-Install-Package -Name "Redis" -Id "Redis.Redis"
-Install-Package -Name "Redis Insight" -Id "RedisInsight.RedisInsight"
-Install-Package -Name "RedisDesktopManager" -Id "qishibo.AnotherRedisDesktopManager"
-Install-Package -Name "Navicat Premium" -Id "PremiumSoft.NavicatPremium"
-
-# === Phase 4: Debug Tools ===
-Write-Host ""
-Write-Host "[4/7] Debug Tools" -ForegroundColor Magenta
-Install-Package -Name "Apifox" -Id "Ruihu.Apifox"
-Install-Package -Name "Charles" -Id "XK72.Charles"
-
-# === Phase 5: Utility Tools ===
-Write-Host ""
-Write-Host "[5/7] Utility Tools" -ForegroundColor Magenta
-Install-Package -Name "Typora" -Id "appmakes.Typora"
-Install-Package -Name "PixPin" -Id "PixPin.PixPin"
-Install-Package -Name "Sparkle" -Id "xishang0128.Sparkle"
-Install-Package -Name "CC Switch" -Id "farion1231.CC-Switch"
-Install-Package -Name "Baidu Netdisk" -Id "Baidu.BaiduNetdisk"
-Install-Package -Name "uTools" -Id "Yuanli.uTools"
-Install-Package -Name "WeChat" -Id "Tencent.WeChat"
-Install-Package -Name "Sunlogin" -Id "XPDDRBQ2D1N7NJ"
-Install-Package -Name "Proxifier" -Id "VentoByte.Proxifier"
-Install-Package -Name "Clash Verge" -Id "ClashVergeRev.ClashVergeRev"
-Install-Package -Name "SpaceSniffer" -Id "UderzoSoftware.SpaceSniffer"
-
-# === Phase 6: Container ===
-Write-Host ""
-Write-Host "[6/7] Container" -ForegroundColor Magenta
-Install-Package -Name "Docker Desktop" -Id "Docker.DockerDesktop"
-
-# === Phase 7: Node.js Environment ===
-Write-Host ""
-Write-Host "[7/7] Node.js Environment" -ForegroundColor Magenta
-
-# NVM for Windows
-Install-Package -Name "NVM for Windows" -Id "CoreyButler.NVMforWindows"
-
-# Refresh env vars (machine + user)
-Write-Host "  ... Refreshing env vars..." -ForegroundColor Yellow
-$env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
-
-# Explicitly load NVM paths into current session (winget install just wrote registry, not current process)
-$nvmHome = [System.Environment]::GetEnvironmentVariable("NVM_HOME", "Machine")
-$nvmSymlink = [System.Environment]::GetEnvironmentVariable("NVM_SYMLINK", "Machine")
-if ($nvmHome -and $nvmSymlink) {
-    $env:Path = "$nvmHome;$nvmSymlink;$env:Path"
-    Write-Host "  OK NVM paths loaded: NVM_HOME=$nvmHome" -ForegroundColor Green
-} else {
-    Write-Host "  WARN NVM_HOME/NVM_SYMLINK not found in registry" -ForegroundColor Yellow
+# ---------- ensure Scoop if needed ----------
+if ($pm -eq "scoop" -and -not $hasScoop) {
+    Write-Host "[setup] Installing Scoop (user-mode) ..." -ForegroundColor Magenta
+    $env:SCOOP_SKIP_SAFELY_DELETE = "1"
+    [Environment]::SetEnvironmentVariable("SCOOP","$InstallRoot\scoop","User")
+    Set-ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
+    try { irm get.scoop.sh | iex } catch { Write-Host "  FAIL Scoop install: $_" -ForegroundColor Red; exit 1 }
+    scoop bucket add extras 2>$null
+    $scoopShim = Join-Path $InstallRoot "scoop\shims\scoop.ps1"
 }
 
-# Verify Python is in PATH (Python.Python.3.12 winget install should auto-add)
-$pyCmd = Get-Command python -ErrorAction SilentlyContinue
-if ($pyCmd) {
-    Write-Host "  OK Python: $($pyCmd.Source)" -ForegroundColor Green
-} else {
-    Write-Host "  WARN python not in current PATH, trying explicit Python install path..." -ForegroundColor Yellow
-    $pyPaths = @(
-        "$env:LOCALAPPDATA\Programs\Python\Python312",
-        "$env:ProgramFiles\Python312",
-        "$env:LOCALAPPDATA\Programs\Python\Python312\Scripts",
-        "$env:ProgramFiles\Python312\Scripts"
-    )
-    foreach ($p in $pyPaths) {
-        if (Test-Path "$p\python.exe") {
-            $env:Path = "$p;$env:Path"
-            Write-Host "  OK Added Python to PATH: $p" -ForegroundColor Green
-            break
+# ---------- install functions ----------
+function Install-Winget($name, $id, $extra="") {
+    winget list --id $id --accept-source-agreements --exact 2>$null | Out-Null
+    if ($LASTEXITCODE -eq 0) { Write-Host "  OK $name (installed)" -ForegroundColor Green; $script:installed += $name; $script:installedCount++; return $true }
+    winget install --id $id --accept-source-agreements --accept-package-agreements -h $extra 2>&1 | Out-Null
+    if ($LASTEXITCODE -eq 0) { Write-Host "  OK $name" -ForegroundColor Green; $script:installed += $name; $script:installedCount++; return $true }
+    Write-Host "  FAIL $name" -ForegroundColor Red; $script:failed += $name; $script:failedCount++; return $false
+}
+function Install-Scoop($name, $pkg) {
+    if (-not $pkg) { Write-Host "  SKIP $name (no scoop pkg)" -ForegroundColor Gray; return $false }
+    # validate name exists in a bucket before install (avoids aborting batch)
+    $valid = scoop search $pkg 2>$null
+    if ($valid -notmatch [regex]::Escape($pkg)) { Write-Host "  SKIP $name (scoop pkg '$pkg' not found)" -ForegroundColor Yellow; return $false }
+    scoop install $pkg 2>&1 | Out-Null
+    if ($LASTEXITCODE -eq 0) { Write-Host "  OK $name" -ForegroundColor Green; $script:installed += $name; $script:installedCount++; return $true }
+    Write-Host "  FAIL $name" -ForegroundColor Red; $script:failed += $name; $script:failedCount++; return $false
+}
+
+# package table: Name, WingetId, Scoop, DirectUrl, Special
+$apps = @(
+    @{Name="Git";                    W="Git.Git";                           S="git";                          U="";        Special=""},
+    @{Name="Python (latest)";        W="Python.Python.3.12";               S="python";                      U="";        Special=""},
+    @{Name="VS Code";                W="Microsoft.VisualStudioCode";        S="vscode";                      U="";        Special=""},
+    @{Name="Cursor";                 W="Anysphere.Cursor";                  S="cursor";                      U="https://download.cursor.com/latest/win";
+                                                                                                                                Special=""},
+    @{Name="PyCharm Community";      W="JetBrains.PyCharm.Community";       S="pycharm";                     U="";        Special=""},
+    @{Name="MongoDB";                W="MongoDB.Server";                    S="mongodb";                     U="";        Special=""},
+    @{Name="MongoDB Compass";        W="MongoDB.Compass";                   S="mongodb-compass";             U="";        Special=""},
+    @{Name="Redis";                  W="Redis.Redis";                       S="redis";                       U="";        Special="Redis"},
+    @{Name="Another Redis Desktop";  W="qishibo.AnotherRedisDesktopManager";S="another-redis-desktop-manager";U="";       Special=""},
+    @{Name="Navicat Premium";        W="PremiumSoft.NavicatPremium";        S="";                            U="https://download.navicat.com/download/navicat-premium.exe"; Special=""},
+    @{Name="Apifox";                 W="Ruihu.Apifox";                      S="apifox";                      U="";        Special=""},
+    @{Name="Charles";                W="XK72.Charles";                      S="";                            U="https://www.charlesproxy.com/assets/release/5.2/Charles64.msi"; Special=""},
+    @{Name="Typora";                 W="appmakes.Typora";                   S="typora";                      U="";        Special=""},
+    @{Name="PixPin";                 W="PixPin.PixPin";                     S="pixpin";                      U="";        Special=""},
+    @{Name="Sparkle";                W="xishang0128.Sparkle";               S="sparkle";                     U="";        Special=""},
+    @{Name="CC Switch";              W="farion1231.CC-Switch";              S="cc-switch";                   U="";        Special=""},
+    @{Name="Baidu Netdisk";          W="Baidu.BaiduNetdisk";                S="baidunetdisk";                U="";        Special=""},
+    @{Name="uTools";                 W="Yuanli.uTools";                     S="utools";                      U="";        Special=""},
+    @{Name="WeChat";                 W="Tencent.WeChat";                    S="wechat";                      U="";        Special=""},
+    @{Name="Sunlogin";               W="XPDDRBQ2D1N7NJ";                    S="";                            U="https://down.sunlogin.oray.com/sunlogin/windows/SunLoginClient.exe"; Special=""},
+    @{Name="Proxifier";              W="VentoByte.Proxifier";               S="";                            U="https://www.proxifier.com/download/ProxifierSetup.exe"; Special=""},
+    @{Name="Clash Verge Rev";        W="ClashVergeRev.ClashVergeRev";       S="clash-verge-rev";             U="";        Special=""},
+    @{Name="SpaceSniffer";           W="UderzoSoftware.SpaceSniffer";       S="spacesniffer";                U="";        Special=""}
+)
+
+foreach ($a in $apps) {
+    if ($a.Special -eq "Redis") {
+        # Redis: install binary, config handled by configure-services.ps1
+        Write-Host "[DB] $($a.Name)" -ForegroundColor Magenta
+        if ($pm -eq "winget") { Install-Winget $a.Name $a.W } else { Install-Scoop $a.Name $a.S }
+        continue
+    }
+    Write-Host "  ... $($a.Name)" -ForegroundColor Yellow
+    if ($pm -eq "winget") {
+        if (-not (Install-Winget $a.Name $a.W)) {
+            if ($a.U) { Invoke-Direct $a.Name $a.U } else { Write-Host "  MANUAL $($a.Name)" -ForegroundColor Yellow }
+        }
+    } else {
+        if (-not (Install-Scoop $a.Name $a.S)) {
+            if ($a.U) { Invoke-Direct $a.Name $a.U } else { Write-Host "  MANUAL $($a.Name)" -ForegroundColor Yellow }
         }
     }
 }
 
-# Verify Git is in PATH
-$gitCmd = Get-Command git -ErrorAction SilentlyContinue
-if ($gitCmd) {
-    Write-Host "  OK Git: $($gitCmd.Source)" -ForegroundColor Green
-} else {
-    Write-Host "  WARN git not in current PATH" -ForegroundColor Yellow
-}
+# NVM (Node version manager)
+Write-Host "[Node] NVM" -ForegroundColor Magenta
+if ($pm -eq "winget") { Install-Winget "NVM for Windows" "CoreyButler.NVMforWindows" } else { Install-Scoop "NVM for Windows" "nvm" }
+$env:Path = [Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [Environment]::GetEnvironmentVariable("Path","User")
+$nvmHome = [Environment]::GetEnvironmentVariable("NVM_HOME","Machine")
+if ($nvmHome) { $env:Path = "$nvmHome;$env:Path" }
+nvm install lts 2>$null; nvm use lts 2>$null
+Write-Host "  OK Node: $(node --version 2>$null)" -ForegroundColor Green
 
-# Install Node LTS via NVM
-Write-Host "  ... Installing Node.js LTS via NVM..." -ForegroundColor Yellow
-nvm install lts 2>&1 | Out-Null
-nvm use lts 2>&1 | Out-Null
-$nv = node --version 2>$null
-if ($nv) {
-    Write-Host "  OK Node.js: $nv" -ForegroundColor Green
-} else {
-    Write-Host "  WARN Node.js not found, try restarting terminal" -ForegroundColor Yellow
-}
-
-# Configure npm mirror
-Write-Host "  ... Configuring npm mirror..." -ForegroundColor Yellow
+# pip mirror + npm mirror
+Write-Host "[mirrors] pip / npm" -ForegroundColor Magenta
+pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple 2>$null
 npm config set registry https://registry.npmmirror.com 2>$null
-Write-Host "  OK npm mirror configured" -ForegroundColor Green
+Write-Host "  OK mirrors set" -ForegroundColor Green
 
-# Install global npm packages
-Write-Host "  ... Installing global npm packages..." -ForegroundColor Yellow
-$npmPkgs = @("pnpm", "yarn", "typescript", "ts-node", "tsx")
-foreach ($pkg in $npmPkgs) {
-    Write-Host "    Installing $pkg..." -ForegroundColor Gray
-    npm install -g $pkg 2>$null
-    if ($LASTEXITCODE -eq 0) {
-        $v = & $pkg --version 2>$null
-        Write-Host "    OK $pkg v$v" -ForegroundColor Green
-    } else {
-        Write-Host "    FAIL $pkg" -ForegroundColor Red
-    }
+# global npm packages
+foreach ($p in @("pnpm","yarn","typescript","ts-node","tsx")) {
+    npm install -g $p 2>$null
+    Write-Host "  npm -g $p : $(& $p --version 2>$null)" -ForegroundColor $(if ($?) { "Green" } else { "Yellow" })
 }
 
-# === Summary ===
-$endTime = Get-Date
-$duration = $endTime - $startTime
+# ---------- database services (MySQL / Redis) ----------
+Write-Host "[DB services] configure MySQL + Redis" -ForegroundColor Magenta
+$svc = Join-Path $PSScriptRoot "configure-services.ps1"
+if (Test-Path $svc) {
+    & powershell -ExecutionPolicy Bypass -File $svc
+} else {
+    Write-Host "  SKIP configure-services.ps1 not found" -ForegroundColor Yellow
+}
 
+# ---------- summary ----------
+$endTime = Get-Date
+$dur = $endTime - $startTime
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host "  Bootstrap Complete" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host "Success: $installedCount" -ForegroundColor Green
-Write-Host "Failed: $failedCount" -ForegroundColor $(if ($failedCount -gt 0) { "Red" } else { "Green" })
-Write-Host "Time: $($duration.TotalMinutes.ToString('0.0')) min" -ForegroundColor Cyan
-
+Write-Host "Failed:  $failedCount" -ForegroundColor $(if ($failedCount -gt 0) { "Red" } else { "Green" })
+Write-Host "Time: $($dur.TotalMinutes.ToString('0.0')) min" -ForegroundColor Cyan
 if ($failedCount -gt 0) {
-    Write-Host ""
-    Write-Host "Failed items:" -ForegroundColor Red
-    foreach ($f in $failed) {
-        Write-Host "  - $f" -ForegroundColor Red
-    }
-    Write-Host ""
-    Write-Host "Tip: Failed items may be due to network issues. Retry manually later." -ForegroundColor Yellow
+    Write-Host "Failed:" -ForegroundColor Red
+    foreach ($f in $failed) { Write-Host "  - $f" -ForegroundColor Red }
 }
-
 Write-Host ""
-Write-Host "Post-install manual steps:" -ForegroundColor Yellow
-Write-Host "  1. Docker Desktop: restart PC and enable WSL2/Hyper-V" -ForegroundColor Gray
-Write-Host "  2. Charles: install SSL certificate (Help > SSL Proxying)" -ForegroundColor Gray
-Write-Host "  3. Navicat: activate license manually" -ForegroundColor Gray
-Write-Host "  4. Sparkle: configure subscription URL" -ForegroundColor Gray
-Write-Host "  5. pip deps: pip install scrapy requests httpx aiohttp selenium playwright beautifulsoup4 lxml pandas" -ForegroundColor Gray
-Write-Host "  6. Playwright browsers: playwright install chromium" -ForegroundColor Gray
+Write-Host "Manual steps:" -ForegroundColor Yellow
+Write-Host "  1. Docker Desktop: reboot + enable WSL2/Hyper-V (needs admin)" -ForegroundColor Gray
+Write-Host "  2. Charles: install SSL cert (Help > SSL Proxying)" -ForegroundColor Gray
+Write-Host "  3. Navicat/PyCharm Pro: activate with your license" -ForegroundColor Gray
+Write-Host "  4. Sparkle/Proxifier/CC Switch: configure subscriptions" -ForegroundColor Gray
+Write-Host "  5. pip deps: pip install scrapy requests httpx aiohttp selenium playwright bs4 lxml pandas" -ForegroundColor Gray
